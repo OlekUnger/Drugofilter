@@ -1,3 +1,5 @@
+
+// localStorage.clear()
 var sourceVk;
 
 let friendsList;
@@ -7,11 +9,15 @@ const friendsListRight = document.querySelector('.friends_list-right');
 const overlay = document.querySelector('.overlay');
 const close = document.querySelector('#close');
 const btnSave = document.querySelector('#btnSave');
+let rightSearch = document.querySelector('.search_input-right');
+let leftSearch = document.querySelector('.search_input-left');
 
 let storage = localStorage.getItem('friends');
 
 if (!storage) {
     storage = [];
+} else {
+    storage = JSON.parse(storage);
 }
 
 let leftSource;
@@ -64,7 +70,7 @@ auth()
 
 btnSave.addEventListener('click', (e) => {
     overlay.style.display = 'none';
-    localStorage.setItem('friends', storage);
+    localStorage.setItem('friends', JSON.stringify(storage));
 });
 
 close.addEventListener('click', () => {
@@ -72,7 +78,10 @@ close.addEventListener('click', () => {
 })
 
 content.addEventListener('input', (e) => {
-    let data;
+
+    let data,
+        newFriendsList;
+
     if (e.target.className == 'search_input-left') {
         friendsList = friendsListLeft;
         data = leftSource;
@@ -81,23 +90,21 @@ content.addEventListener('input', (e) => {
         friendsList = friendsListRight;
         data = rightSource;
     }
-    let value = e.target.value.toLowerCase();
-    let newFriendsList = data.filter((item) => {
-        let name = `${item.first_name} ${item.last_name}`;
-        return name.toLowerCase().match(value);
-    });
-
+    newFriendsList = filterFriends(e.target.value, data);
     createFriendsList(newFriendsList, friendsList);
 });
 
 makeDnD([friendsListLeft, friendsListRight]);
 
+
 function setSources() {
+    let rSource;
+    let lSource;
+
     leftSource = sourceVk.filter(item => {
         if (storage.indexOf(item.id) == -1) {
             return item;
-        }
-        ;
+        };
     });
     rightSource = sourceVk.filter(item => {
         if (storage.indexOf(item.id) != -1) {
@@ -105,8 +112,29 @@ function setSources() {
         }
     });
 
-    createFriendsList(leftSource, friendsListLeft);
-    createFriendsList(rightSource, friendsListRight);
+    if(rightSearch.value!=''){
+        rSource = filterFriends(rightSearch.value, rightSource);
+    } else {
+        rSource = rightSource;
+    };
+
+    if(leftSearch.value!=''){
+        lSource = filterFriends(leftSearch.value, leftSource);
+    } else {
+        lSource = leftSource;
+    }
+
+    createFriendsList(lSource, friendsListLeft);
+    createFriendsList(rSource, friendsListRight);
+}
+
+function filterFriends(val, data){
+    let value = val.toLowerCase();
+    let source = data.filter((item) => {
+        let name = `${item.first_name} ${item.last_name}`;
+        return name.toLowerCase().match(value);
+    });
+    return source;
 }
 
 function createFriendsList(arr, list) {
@@ -152,10 +180,8 @@ function makeDnD(items) {
         });
 
         item.addEventListener('drop', (e) => {
-
             if (currentDrug) {
                 e.preventDefault();
-
                 if (currentDrug.source !== item) {
                     if (e.target.classList.contains('friends_list')) {
                         item.insertBefore(currentDrug.node, item.lastElementChild);
@@ -166,7 +192,6 @@ function makeDnD(items) {
                 }
                 currentDrug = null;
             }
-
             setStorage();
             setSources();
         })
@@ -176,17 +201,22 @@ function makeDnD(items) {
 function moveFriend(e) {
 
     let friend = e.target.parentNode,
+        id = parseInt(friend.id),
         removed;
 
     if (e.target.classList.contains('add')) {
         removed = friendsListLeft.removeChild(friend);
         friendsListRight.appendChild(removed);
+        storage.push(id);
     }
     if (e.target.classList.contains('delete')) {
         removed = friendsListRight.removeChild(friend);
         friendsListLeft.appendChild(removed);
+        storage = storage.filter((item)=>{
+            return item !=id;
+        })
     }
-    setStorage();
+
     setSources();
 }
 
@@ -197,3 +227,5 @@ function setStorage() {
         storage.push(parseInt(elem.getAttribute('id')));
     });
 }
+
+
